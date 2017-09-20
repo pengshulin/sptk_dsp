@@ -192,7 +192,8 @@ def resetOffset(dat):
 #dat = makeTriangle( length, 1, 100, sample_rate )
 #dat = makeSawtooth( length, 1, 100, sample_rate )
 #dat = makeEnvelope( length, 1, 100, 10, sample_rate )
-dat = makeImpulse( length, 1, 100, sample_rate )
+dat = makeImpulse( length, 1, 10, sample_rate )
+dat *= makeSine( length, 1, 100, sample_rate )
 #cutDatThreshold( dat )
 #dat = readFromFile( '/dev/shm/float_array', decimate=1 )
 #dat = resetOffset(dat)
@@ -200,8 +201,8 @@ dat = makeImpulse( length, 1, 100, sample_rate )
 length = len(dat)  # reset
 total_time = length / sample_rate  # reset
 
-#printDat( (dat+1.0)/2.0, mode='i12', factor=4095 )
-printDat( dat, mode='i12', factor=4095 )
+printDat( (dat+1.0)/2.0, mode='i12', factor=4095 )
+#printDat( dat, mode='i12', factor=4095 )
 
 FFT_DATA_MODE=False
 
