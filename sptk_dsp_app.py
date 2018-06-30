@@ -289,6 +289,45 @@ p.draw()
 pass
 '''],
 
+['plot data', r'''# Plot data
+def readFromFile( fname, cut=None, decimate=None, column=0 ):
+    lst = []
+    f = open(fname, 'r')
+    while True:
+        l = f.readline()
+        if not l:
+            break
+        if decimate:
+            for i in range(decimate):
+                f.readline()
+        l = l.split()[column]
+        lst.append( float(l.strip()) )
+        if cut and len(lst) >= cut:
+            break
+    return numpy.array(lst)
+
+FILE = '/tmp/sptk_dsp.dat'
+dat1 = readFromFile( FILE, decimate=1, column=0 )
+dat2 = readFromFile( FILE, decimate=1, column=1 )
+dat3 = readFromFile( FILE, decimate=1, column=2 )
+dat4 = readFromFile( FILE, decimate=1, column=3 )
+dat_x = range(len(dat1))
+
+# PLOT
+p = GETPANEL()
+p1 = p.addSubPlot('dat1', 111, additional_cursors=[])
+p1.clear()
+p1.set_ylabel( 'dat1' )
+p1.plot( dat1, color='b' )
+p1.plot( dat2, color='g' )
+p1.plot( dat3, color='y' )
+p1.plot( dat4, color='r' )
+p.setDat( 'dat1', dat_x, dat4 )
+p.reserved_lines_num['dat1'] = 4
+p1.grid(True, which='major', linestyle=':')
+p.draw()
+'''],
+
 ]
 
 ###############################################################################
@@ -336,6 +375,20 @@ class MainFrame(MyFrame):
     def __init__(self, *args, **kwds):
         MyFrame.__init__( self, *args, **kwds )
         self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+        # split with control/plot panel
+        self.p1 = ControlPanel(self.window)
+        self.p2 = PlotPanel(self.window)
+        self.window.SetMinimumPaneSize(100)
+        self.window.SplitVertically(self.p1, self.p2)
+        # rebind controls
+        self.combo_box_script = self.p1.combo_box_script
+        self.button_run = self.p1.button_run
+        self.text_ctrl_script = self.p1.text_ctrl_script
+        self.bar_info = self.p1.bar_info
+        self.plotpanel = self.p2.plotpanel
+        self.Bind(wx.EVT_COMBOBOX, self.OnSelectScript, self.combo_box_script)
+        self.Bind(wx.EVT_BUTTON, self.OnRun, self.button_run)
+        # init 
         self.combo_box_script.SetValue('select script')
         self.combo_box_script.AppendItems([c[0] for c in SCRIPTS_LIST]) 
         self.init_text_ctrl_script()
@@ -348,7 +401,7 @@ class MainFrame(MyFrame):
         self.listener = Thread( target=self.listener )
         self.listener.setDaemon( 1 )
         self.listener.start()
- 
+
     #def listener( self ):
     #    while True:
     #        try:
@@ -485,6 +538,8 @@ class MainFrame(MyFrame):
             ctrl.BraceBadLight(braceAtCaret)
         else:
             ctrl.BraceHighlight(braceAtCaret, braceOpposite)
+
+
 
 
 
