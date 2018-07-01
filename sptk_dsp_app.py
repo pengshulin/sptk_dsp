@@ -320,7 +320,8 @@ def readFromFile( fname, cut=None, decimate=None ):
 
 FILE = '/tmp/sptk_dsp.dat'
 dat = readFromFile( FILE ).transpose()
-dat_x = numpy.array(range(len(dat[0])))
+dat_len = len(dat[0])
+dat_x = numpy.array(range(dat_len))
 dat_col = len(dat)
 
 # PLOT
@@ -382,6 +383,8 @@ def STOP(message=''):
 def GETPANEL():
     return dialog_1.plotpanel
 
+def INFO(message=''):
+    dialog_1.info(message)
 
 class MainFrame(MyFrame):
     def __init__(self, *args, **kwds):
