@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf8
 # ShulinPeng's ToolKit for Digital Signal Processing
-# Peng Shulin <trees_peng@163.com> 2017
+# Peng Shulin <trees_peng@163.com> 2018
 from __future__ import unicode_literals
 import os
 import re
@@ -28,7 +28,11 @@ import wx.lib.newevent
 LINE_LIMIT = 80
 
 SCRIPTS_LIST = [
-['FFT', r'''# Fast Fourier Transform
+['FFT', 
+r'''# 1. generate data or read data from file
+# 2. fast fourier transform
+# 3. plot three figure: raw / fft_amp /fft_phase
+
 length = 4096
 bandwidth = 5000
 sample_rate = 2.56*float(bandwidth)
@@ -164,7 +168,6 @@ def makeImpulse( length, amp, freq, sample_rate, init_dphase=0.0 ):
     return numpy.array(r)
 
 
-
 def readFromFile( fname, cut=None, decimate=None ):
     lst = []
     f = open(fname, 'r')
@@ -175,10 +178,11 @@ def readFromFile( fname, cut=None, decimate=None ):
         if decimate:
             for i in range(decimate):
                 f.readline()
-        lst.append( float(l.strip()) )
+        lst.append( [float(x.strip()) for x in l.split()] )
         if cut and len(lst) >= cut:
             break
     return numpy.array(lst)
+
 
 def resetOffset(dat):
     means = sum(dat) / len(dat) 
@@ -195,7 +199,7 @@ def resetOffset(dat):
 dat = makeImpulse( length, 1, 10, sample_rate )
 dat *= makeSine( length, 1, 100, sample_rate )
 #cutDatThreshold( dat )
-#dat = readFromFile( '/dev/shm/float_array', decimate=1 )
+#dat = readFromFile( '/dev/shm/float_array', decimate=1 ).transpose()[0]
 #dat = resetOffset(dat)
 
 length = len(dat)  # reset
@@ -237,60 +241,67 @@ if NEED_HILBERT:
     fft_hilbert_abs = abs(fft_hilbert_raw)
     fft_hilbert_phase = numpy.angle(fft_hilbert_raw) / pi * 180
 
-p = GETPANEL()
+panel = GETPANEL()
 # plot1: source
-p1 = p.addSubPlot('dat', 311, additional_cursors=[])
+p1 = panel.addSubPlot('dat', 311, additional_cursors=[])
 p1.clear()
 p1.set_ylabel( 'dat' )
 p1.plot( dat_x, dat, color='b' )
 if NEED_WINDOW:
     p1.plot( dat_x, dat_window, color='darkblue' )
-    p.reserved_lines_num['dat'] += 1
+    panel.reserved_lines_num['dat'] += 1
 if NEED_HILBERT:
     p1.plot( dat_x, dat_hilbert, color='y' )
-    p.reserved_lines_num['dat'] += 1
+    panel.reserved_lines_num['dat'] += 1
     p1.plot( dat_x, dat_hilbert_env, color='g' )
-    p.reserved_lines_num['dat'] += 1
-p.setDat( 'dat', dat_x, dat )
+    panel.reserved_lines_num['dat'] += 1
+panel.setDat( 'dat', dat_x, dat )
 p1.set_xlim( left=0, right=total_time, auto=False )
 p1.set_ylim( bottom=min(dat), top=max(dat), auto=False )
 p1.grid(True, which='major', linestyle=':')
 
 NEED_LOG_PLOT = False
 # plot2: fft_amp
-p2 = p.addSubPlot('fft_amp', 312)
+p2 = panel.addSubPlot('fft_amp', 312)
 p2.clear()
 p2.set_ylabel( 'fft_amp' )
 if NEED_LOG_PLOT:
     p2.semilogy( fft_x, fft_abs, color='b' )
 else:
     p2.plot( fft_x, fft_abs, color='b' )
-p.setDat( 'fft_amp', fft_x, fft_abs )
+panel.setDat( 'fft_amp', fft_x, fft_abs )
 p2.grid(True, which='major', linestyle=':')
 p2.set_xlim( left=0, right=fft_x[-1], auto=False )
 p2.set_ylim( bottom=0, top=max(fft_abs), auto=False )
 
 # plot3: fft_phase
-p3 = p.addSubPlot('fft_phase', 313)
+p3 = panel.addSubPlot('fft_phase', 313)
 p3.clear()
 p3.set_ylabel( 'fft_phase' )
 p3.plot( fft_x, fft_phase, color='b' )
-p.setDat( 'fft_phase', fft_x, fft_phase )
+panel.setDat( 'fft_phase', fft_x, fft_phase )
 if NEED_HILBERT:
     p3.plot( fft_x, fft_hilbert_phase, color='y' )
-    p.reserved_lines_num['fft_phase'] += 1
+    panel.reserved_lines_num['fft_phase'] += 1
 p3.set_xlim( left=0, right=fft_x[-1], auto=False )
 p3.set_ylim( bottom=-180, top=180, auto=False )
 p3.grid(True, which='major', linestyle=':')
-p.draw()
+panel.draw()
 '''],
 
-['FIR', '''\
-pass
+['FIR', 
+r'''# 1. generate data or read data from file
+# 2. FIR filter
+# 3. plot 
+
 '''],
 
-['plot data', r'''# Plot data
-def readFromFile( fname, cut=None, decimate=None, column=0 ):
+['plot data from file', 
+r'''# 1. load float matrix from a file
+# 2. extract data by column 
+# 3. plot them together
+
+def readFromFile( fname, cut=None, decimate=None ):
     lst = []
     f = open(fname, 'r')
     while True:
@@ -300,33 +311,31 @@ def readFromFile( fname, cut=None, decimate=None, column=0 ):
         if decimate:
             for i in range(decimate):
                 f.readline()
-        l = l.split()[column]
-        lst.append( float(l.strip()) )
+        lst.append( [float(x.strip()) for x in l.split()] )
         if cut and len(lst) >= cut:
             break
     return numpy.array(lst)
 
 FILE = '/tmp/sptk_dsp.dat'
-dat1 = readFromFile( FILE, decimate=1, column=0 )
-dat2 = readFromFile( FILE, decimate=1, column=1 )
-dat3 = readFromFile( FILE, decimate=1, column=2 )
-dat4 = readFromFile( FILE, decimate=1, column=3 )
-dat_x = range(len(dat1))
+dat = readFromFile( FILE ).transpose()
+dat_x = numpy.array(range(len(dat[0])))
+dat_col = len(dat)
 
 # PLOT
-p = GETPANEL()
-p1 = p.addSubPlot('dat1', 111, additional_cursors=[])
-p1.clear()
-p1.set_ylabel( 'dat1' )
-p1.plot( dat1, color='b' )
-p1.plot( dat2, color='g' )
-p1.plot( dat3, color='y' )
-p1.plot( dat4, color='r' )
-p.setDat( 'dat1', dat_x, dat4 )
-p.reserved_lines_num['dat1'] = 4
-p1.grid(True, which='major', linestyle=':')
-p.draw()
+panel = GETPANEL()
+p = panel.addSubPlot('dat', 111, additional_cursors=[])
+p.clear()
+p.set_ylabel( 'dat' )
+for i in range(dat_col):
+    p.plot( dat_x, dat[i] )
+panel.setDat( 'dat', dat_x, dat[0] )
+panel.reserved_lines_num['dat'] = dat_col
+p.grid(True, which='major', linestyle=':')
+panel.draw()
 '''],
+
+
+['load script from file...', ''],
 
 ]
 
@@ -376,18 +385,20 @@ class MainFrame(MyFrame):
         MyFrame.__init__( self, *args, **kwds )
         self.Bind(wx.EVT_CLOSE, self.OnClose, self)
         # split with control/plot panel
-        self.p1 = ControlPanel(self.window)
-        self.p2 = PlotPanel(self.window)
-        self.window.SetMinimumPaneSize(100)
-        self.window.SplitVertically(self.p1, self.p2)
-        # rebind controls
+        self.p1 = ControlPanel(self.splitter)
+        self.p2 = PlotPanel(self.splitter)
+        self.splitter.SetMinimumPaneSize(100)
+        self.splitter.SplitVertically(self.p1, self.p2)
+        # re-bind controls
         self.combo_box_script = self.p1.combo_box_script
+        self.button_save = self.p1.button_save
         self.button_run = self.p1.button_run
         self.text_ctrl_script = self.p1.text_ctrl_script
         self.bar_info = self.p1.bar_info
         self.plotpanel = self.p2.plotpanel
         self.Bind(wx.EVT_COMBOBOX, self.OnSelectScript, self.combo_box_script)
         self.Bind(wx.EVT_BUTTON, self.OnRun, self.button_run)
+        self.Bind(wx.EVT_BUTTON, self.OnSave, self.button_save)
         # init 
         self.combo_box_script.SetValue('select script')
         self.combo_box_script.AppendItems([c[0] for c in SCRIPTS_LIST]) 
@@ -423,15 +434,43 @@ class MainFrame(MyFrame):
     def OnSelectScript(self, event):
         self.info('')
         tp = self.combo_box_script.GetValue()
-        if SCRIPTS_DICT.has_key(tp):
+        if tp == 'load script from file...':
+            dlg = wx.FileDialog( self, message=_("Choose python script file"), 
+                defaultFile='', wildcard="Python script file (*.py)|*.py", style=wx.OPEN )
+            if dlg.ShowModal() == wx.ID_OK:
+                fname = dlg.GetPath().strip()
+                self.text_ctrl_script.LoadFile( fname )
+                label = 'file: %s'% fname
+                if self.combo_box_script.FindString( label ) == wx.NOT_FOUND:
+                    self.combo_box_script.Append( label )
+                self.combo_box_script.SetValue( label )
+                self.button_save.Enable(True)
+                self.button_run.Enable(True)
+            else:
+                self.button_save.Enable(False)
+                self.button_run.Enable(False)
+        elif tp.startswith('file: '):
+            fname = tp.lstrip('file: ')
+            print 'load %s'% fname
+            if os.path.isfile(fname):
+                self.text_ctrl_script.LoadFile( fname )
+                self.button_save.Enable(True)
+                self.button_run.Enable(True)
+            else:
+                self.text_ctrl_script.SetValue( '%s file not exists'% fname )
+                self.button_save.Enable(False)
+                self.button_run.Enable(False)
+        elif SCRIPTS_DICT.has_key(tp):
             self.text_ctrl_script.SetValue( SCRIPTS_DICT[tp] )
+            self.button_save.Enable(False)
             self.button_run.Enable(True)
         else:
+            self.button_save.Enable(False)
             self.button_run.Enable(False)
         event.Skip()
 
     def OnRun(self, event):
-        print 'OnRun'
+        print 'run'
         self.run()
         event.Skip()
         
@@ -539,7 +578,17 @@ class MainFrame(MyFrame):
         else:
             ctrl.BraceHighlight(braceAtCaret, braceOpposite)
 
-
+    def OnSave(self, event):
+        fname = self.combo_box_script.GetValue()
+        if fname.startswith('file: '):
+            fname = fname.lstrip('file: ')
+            script = self.text_ctrl_script.GetValue()
+            open( fname.encode('utf8'), 'w+' ).write( script.encode('utf8') )
+            print 'save %s'% fname
+        else:
+            self.button_save.Enable(False)
+        event.Skip()
+ 
 
 
 
@@ -547,8 +596,9 @@ class MainFrame(MyFrame):
 if __name__ == "__main__":
     gettext.install("app")
     app = wx.App(0)
-    app.SetAppName( 'SptkDskApp' )
+    app.SetAppName( 'SptkDspApp' )
     dialog_1 = MainFrame(None, wx.ID_ANY, "")
     app.SetTopWindow(dialog_1)
     dialog_1.Show()
     app.MainLoop()
+
