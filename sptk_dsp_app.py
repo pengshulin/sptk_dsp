@@ -241,7 +241,9 @@ if NEED_HILBERT:
     fft_hilbert_abs = abs(fft_hilbert_raw)
     fft_hilbert_phase = numpy.angle(fft_hilbert_raw) / pi * 180
 
+# PLOT
 panel = GETPANEL()
+panel.clear()
 # plot1: source
 p1 = panel.addSubPlot('dat', 311, additional_cursors=[])
 p1.clear()
@@ -323,6 +325,7 @@ dat_col = len(dat)
 
 # PLOT
 panel = GETPANEL()
+panel.clear()
 p = panel.addSubPlot('dat', 111, additional_cursors=[])
 p.clear()
 p.set_ylabel( 'dat' )
