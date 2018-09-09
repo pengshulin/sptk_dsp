@@ -15,6 +15,7 @@ import numpy
 import scipy
 import scipy.signal
 import scipy.fftpack
+import matplotlib
 from Queue import Empty
 from threading import Thread
 from multiprocessing import Process, Queue
@@ -339,6 +340,30 @@ panel.draw()
 '''],
 
 
+['plot memory data', 
+r'''# load memory from mcush and plot
+from mcush import *
+p = Mcush.Mcush('/dev/ttyUSB0')
+mem = p.readMem(0x20000000, 1024)
+dat_len = len(mem)/2
+dat = numpy.array([Utils.s2H(mem[i*2:i*2+2]) for i in range(dat_len)])
+dat_x = numpy.array(range(dat_len))
+
+# PLOT
+panel = GETPANEL()
+panel.clear()
+p = panel.addSubPlot('dat', 111, additional_cursors=[])
+#p.clear()
+p.set_ylabel( 'dat' )
+p.plot( dat_x, dat )
+panel.setDat( 'dat', dat_x, dat )
+p.grid(True, which='major', linestyle=':')
+panel.draw()
+
+'''],
+
+
+
 ['load script from file...', ''],
 
 ]
@@ -419,6 +444,11 @@ class MainFrame(MyFrame):
         self.listener.setDaemon( 1 )
         self.listener.start()
 
+        # TODO: set Ctrl-S to save script
+        #self.SetAcceleratorTable(wx.AcceleratorTable([  \
+        #    (wx.ACCEL_NORMAL, wx.WXK_F2, 1006),  # save
+        #    ]))
+
     #def listener( self ):
     #    while True:
     #        try:
@@ -496,7 +526,12 @@ class MainFrame(MyFrame):
         except StopError as e:
             self.info(unicode(e), wx.ICON_ERROR)
         except Exception as e:
-            self.info(unicode(e))
+            ename = type(e).__name__
+            try:
+                s = ename + ': ' + str(e)
+            except:
+                s = ename
+            self.info( s )
             return
         t1 = time.time()
         print( 'time elapsed: %.1f seconds'% (t1-t0) )

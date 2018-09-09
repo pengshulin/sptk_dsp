@@ -14,7 +14,10 @@ from wx import SplitterWindow
 from wx import InfoBar
 import wx.stc
 from wx.stc import StyledTextCtrl
-from PlotUtils import AnalysisPlotPanel
+try:
+    from PlotUtils import AnalysisPlotPanel
+except ImportError:
+    from PlotPanel import PlotPanel as AnalysisPlotPanel
 # end wxGlade
 
 
