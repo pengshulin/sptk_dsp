@@ -474,7 +474,6 @@ class MainFrame(MyFrame):
             except Exception as e:
                 #print e
                 pass
-            print self.history_scripts
         except Exception as e:
             print( 'loadconfig failed' )
             mode = False
