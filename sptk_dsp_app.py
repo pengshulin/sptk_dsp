@@ -16,6 +16,7 @@ import scipy
 import scipy.signal
 import scipy.fftpack
 import matplotlib
+import ConfigParser
 from Queue import Empty
 from threading import Thread
 from multiprocessing import Process, Queue
@@ -366,19 +367,23 @@ panel.draw()
 
 ['load script from file...', ''],
 
+['clear history scripts', ''],
+
 ]
 
 ###############################################################################
-#signal_idx = 0
-#def signal_handler(signum, frame):
-#    global signal_idx
-#    print '[%d] SIGUSR1'% signal_idx
-#    signal_idx += 1
-#    dialog_1.control_queue.put_nowait( "run" )
-#signal.signal(signal.SIGUSR1, signal_handler)
-#PIDFILE = '/dev/shm/sptk_dsp.pid'
-#open( PIDFILE, 'w+' ).write( str(os.getpid()) )
-#print 'PID=%d'% os.getpid()
+signal_idx = 0
+def signal_handler(signum, frame):
+    global signal_idx, dialog_1
+    print '[%d] SIGUSR1'% signal_idx
+    signal_idx += 1
+    dialog_1.control_queue.put_nowait( "run" )
+signal.signal(signal.SIGUSR1, signal_handler)
+def update_pid_file():
+    PIDFILE = '/dev/shm/sptk_dsp.pid'
+    open( PIDFILE, 'w+' ).write( str(os.getpid()) )
+print 'PID=%d'% os.getpid()
+update_pid_file()
 
 
 FIFO = '/dev/shm/sptk_dsp.fifo'
@@ -414,6 +419,11 @@ def INFO(message=''):
 class MainFrame(MyFrame):
     def __init__(self, *args, **kwds):
         MyFrame.__init__( self, *args, **kwds )
+
+        dirs = wx.StandardPaths.Get()
+        self.config_dir = dirs.GetUserDataDir()
+        self.config_file = os.path.join( self.config_dir, 'config.conf' )
+ 
         self.Bind(wx.EVT_CLOSE, self.OnClose, self)
         # split with control/plot panel
         self.p1 = ControlPanel(self.splitter)
@@ -440,6 +450,8 @@ class MainFrame(MyFrame):
             ]))
         self.control_queue = Queue()
         self.Bind(EVT_RUN, self.OnRun)
+        self.loadConfig()
+
         self.listener = Thread( target=self.listener )
         self.listener.setDaemon( 1 )
         self.listener.start()
@@ -449,23 +461,62 @@ class MainFrame(MyFrame):
         #    (wx.ACCEL_NORMAL, wx.WXK_F2, 1006),  # save
         #    ]))
 
-    #def listener( self ):
-    #    while True:
-    #        try:
-    #            self.control_queue.get( block=True )
-    #        except Empty:
-    #            break
-    #        # update 
-    #        wx.PostEvent( self, RunEvent() )
-    
+    def loadConfig( self ):
+        try:
+            cfgfile = ConfigParser.ConfigParser()
+            cfgfile.read( self.config_file )
+            idx = 1
+            try:
+                while True:
+                    pathname = unicode(cfgfile.get( 'history', str(idx) ), encoding='utf-8')
+                    self.combo_box_script.Append( 'file: %s'% pathname )
+                    idx += 1
+            except Exception as e:
+                #print e
+                pass
+            print self.history_scripts
+        except Exception as e:
+            print( 'loadconfig failed' )
+            mode = False
+
+    def saveConfig( self ):
+        cfgfile = ConfigParser.ConfigParser()
+        cfgfile.add_section( 'history' )
+        idx = 1
+        for item in self.combo_box_script.GetStrings():
+            if not item.startswith('file: '):
+                continue
+            pathname = item.lstrip("file: ").strip()
+            #print pathname
+            try:
+                cfgfile.set( 'history', str(idx), pathname.encode('utf-8') ) 
+                idx += 1
+            except:
+                pass
+        try:
+            if not os.path.isdir( self.config_dir ):
+                os.mkdir( self.config_dir )
+            cfgfile.write(open( self.config_file, 'w+'))
+        except:
+            pass
+ 
     def listener( self ):
         while True:
             try:
-                cmd = open(FIFO,'r').readline().strip()
-            except:
-                pass
+                self.control_queue.get( block=True )
+            except Empty:
+                break
             # update 
             wx.PostEvent( self, RunEvent() )
+    
+    #def listener( self ):
+    #    while True:
+    #        try:
+    #            cmd = open(FIFO,'r').readline().strip()
+    #        except:
+    #            pass
+    #        # update 
+    #        wx.PostEvent( self, RunEvent() )
 
     def OnSelectScript(self, event):
         self.info('')
@@ -485,6 +536,13 @@ class MainFrame(MyFrame):
             else:
                 self.button_save.Enable(False)
                 self.button_run.Enable(False)
+        elif tp == 'clear history scripts':
+            idx = self.combo_box_script.GetCurrentSelection() + 1
+            try:
+                while True:
+                   self.combo_box_script.Delete( idx )
+            except:
+                pass
         elif tp.startswith('file: '):
             fname = tp.lstrip('file: ')
             print 'load %s'% fname
@@ -507,6 +565,7 @@ class MainFrame(MyFrame):
 
     def OnRun(self, event):
         print 'run'
+        update_pid_file() 
         self.run()
         event.Skip()
         
@@ -537,6 +596,7 @@ class MainFrame(MyFrame):
         print( 'time elapsed: %.1f seconds'% (t1-t0) )
 
     def OnClose(self, event):
+        self.saveConfig()
         self.Destroy()
         event.Skip()
  
