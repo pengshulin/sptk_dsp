@@ -21,6 +21,7 @@ from Queue import Empty
 from threading import Thread
 from multiprocessing import Process, Queue
 from math import *
+from numpy import *
 from random import *
 from sptk_dsp_dlg import *
 import wx
